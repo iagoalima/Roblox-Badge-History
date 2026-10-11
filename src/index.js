@@ -1,32 +1,23 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
+import readline from "node:readline/promises";
+import { stdin as input, stdout as output } from "node:process";
 
-const DEFAULT_USERNAME = "impactoreal_lindo";
-const DEFAULT_USER_ID = "1224165215";
+// Cole sua chave Roblox Open Cloud aqui. NÃO publique nem envie sua chave ao GitHub.
+const API_KEY = "COLE_SUA_CHAVE_AQUI";
 const BASE_URL = "https://apis.roblox.com/cloud/v2";
-const API_KEY = process.env.ROBLOX_API_KEY;
+const USERS_API = "https://users.roblox.com/v1";
 
-function usage() {
-  console.log(`
-Verificador de histórico de emblemas do Roblox
-
-Uso:
-  npm start
-  npm start -- impactoreal_lindo
-  npm start -- 1224165215
-
-Configuração:
-  Defina ROBLOX_API_KEY como variável de ambiente.
-  Consulte README.md para instruções.
-`);
+async function ask(rl, question) {
+  return (await rl.question(question)).trim();
 }
 
 async function fetchJson(url, options = {}) {
   const response = await fetch(url, {
     ...options,
     headers: {
-      "Accept": "application/json",
+      Accept: "application/json",
       ...(options.headers ?? {}),
     },
   });
@@ -48,29 +39,26 @@ async function fetchJson(url, options = {}) {
   return body;
 }
 
-async function resolveUser(input) {
-  if (/^\d+$/.test(input)) {
-    return { userId: input, username: null, displayName: null };
+async function resolveUser(value) {
+  let userId = value;
+
+  if (!/^\d+$/.test(value)) {
+    const result = await fetchJson(`${USERS_API}/usernames/users`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ usernames: [value], excludeBannedUsers: false }),
+    });
+    const match = result.data?.[0];
+    if (!match) throw new Error(`Não encontrei uma conta Roblox chamada "${value}".`);
+    userId = String(match.id);
   }
 
-  const result = await fetchJson("https://users.roblox.com/v1/usernames/users", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      usernames: [input],
-      excludeBannedUsers: false,
-    }),
-  });
-
-  const user = result.data?.[0];
-  if (!user) {
-    throw new Error(`Não encontrei uma conta Roblox com o nome "${input}".`);
-  }
-
+  const profile = await fetchJson(`${USERS_API}/users/${userId}`);
   return {
-    userId: String(user.id),
-    username: user.name,
-    displayName: user.displayName,
+    userId: String(profile.id),
+    username: profile.name ?? null,
+    displayName: profile.displayName ?? null,
+    createdAt: profile.created ?? null,
   };
 }
 
@@ -89,7 +77,6 @@ async function fetchAllBadges(userId) {
     const result = await fetchJson(url, {
       headers: { "x-api-key": API_KEY },
     });
-
     const batch = result.inventoryItems ?? [];
     items.push(...batch);
     page += 1;
@@ -113,131 +100,189 @@ function parseBadge(item) {
   const id = details.badgeId ?? assetDetails.assetId ?? item.badgeId ?? null;
   const rawDate = item.addTime ?? item.awardedDate ?? item.awardedDateTime ?? null;
   const parsedDate = rawDate ? new Date(rawDate) : null;
-  const validDate = parsedDate && !Number.isNaN(parsedDate.getTime());
+  const validDate = Boolean(parsedDate && !Number.isNaN(parsedDate.getTime()));
 
   return {
     badgeId: id == null ? null : String(id),
     name: details.name ?? item.name ?? null,
     description: details.description ?? null,
     awardedAt: validDate ? parsedDate.toISOString() : null,
+    year: validDate ? parsedDate.getUTCFullYear() : null,
     dateStatus: validDate ? "confirmed" : "unavailable",
     badgeUrl: id ? `https://www.roblox.com/badges/${id}` : null,
-    rawPath: item.path ?? null,
   };
 }
 
+function compareBadges(a, b, direction = "desc") {
+  if (a.awardedAt && b.awardedAt) {
+    const compared = a.awardedAt.localeCompare(b.awardedAt);
+    if (compared !== 0) return direction === "asc" ? compared : -compared;
+  }
+  if (a.awardedAt) return -1;
+  if (b.awardedAt) return 1;
+  return (a.badgeId ?? "").localeCompare(b.badgeId ?? "", undefined, { numeric: true });
+}
+
 function csvEscape(value) {
-  const s = value == null ? "" : String(value);
-  return `"${s.replaceAll('"', '""')}"`;
+  const text = value == null ? "" : String(value);
+  return `"${text.replaceAll('"', '""')}"`;
 }
 
 function toCsv(badges) {
   const headers = ["badgeId", "name", "awardedAtUTC", "dateStatus", "badgeUrl"];
   return [
     headers.join(","),
-    ...badges.map((b) => [
-      b.badgeId, b.name, b.awardedAt, b.dateStatus, b.badgeUrl,
+    ...badges.map((badge) => [
+      badge.badgeId, badge.name, badge.awardedAt, badge.dateStatus, badge.badgeUrl,
     ].map(csvEscape).join(",")),
   ].join("\r\n");
 }
 
+function printBadge(badge, index) {
+  const date = badge.awardedAt ?? "DATA INDISPONÍVEL";
+  console.log(`${index + 1}. [${date}] ${badge.name ?? "(nome indisponível)"} — ID ${badge.badgeId ?? "(ID indisponível)"}`);
+  if (badge.badgeUrl) console.log(`   ${badge.badgeUrl}`);
+}
+
+async function browseBadges(rl, badges) {
+  while (true) {
+    console.log("\n========== CONSULTA DE EMBLEMAS ==========");
+    console.log("1. Ver todos por ordem cronológica (mais recentes primeiro)");
+    console.log("2. Ver emblemas de um ano específico");
+    console.log("3. Mostrar o emblema mais recente");
+    console.log("4. Mostrar o emblema mais antigo");
+    console.log("5. Encerrar");
+
+    const choice = await ask(rl, "Escolha uma opção: ");
+    if (choice === "5") return;
+
+    if (choice === "1") {
+      const sorted = [...badges].sort((a, b) => compareBadges(a, b, "desc"));
+      console.log(`\nTodos os emblemas (${sorted.length}), do mais recente para o mais antigo:`);
+      sorted.forEach(printBadge);
+    } else if (choice === "2") {
+      const yearInput = await ask(rl, "Digite o ano (ex.: 2021): ");
+      if (!/^\d{4}$/.test(yearInput)) {
+        console.log("Ano inválido. Digite um ano com quatro algarismos.");
+        continue;
+      }
+      const year = Number(yearInput);
+      const matches = badges
+        .filter((badge) => badge.year === year)
+        .sort((a, b) => compareBadges(a, b, "desc"));
+      console.log(`\nEmblemas com data confirmada em ${year}: ${matches.length}`);
+      if (matches.length) matches.forEach(printBadge);
+      else console.log("Nenhum emblema com data acessível foi encontrado para esse ano.");
+      const undated = badges.filter((badge) => badge.year === null).length;
+      if (undated) console.log(`Observação: ${undated} emblema(s) sem data acessível não podem ser atribuídos a um ano.`);
+    } else if (choice === "3" || choice === "4") {
+      const dated = badges.filter((badge) => badge.awardedAt).sort((a, b) => compareBadges(a, b, "desc"));
+      const badge = choice === "3" ? dated[0] : dated.at(-1);
+      if (!badge) console.log("Não há emblemas com data de concessão acessível para determinar essa informação.");
+      else {
+        console.log(choice === "3" ? "\nEmblema mais recente com data confirmada:" : "\nEmblema mais antigo com data confirmada:");
+        printBadge(badge, 0);
+      }
+    } else {
+      console.log("Opção inválida. Escolha de 1 a 5.");
+    }
+  }
+}
+
 async function main() {
   if (!API_KEY || API_KEY === "COLE_SUA_CHAVE_AQUI") {
-    console.error("ERRO: configure a variável ROBLOX_API_KEY antes de executar.");
-    console.error("Veja o README.md para criar uma chave Open Cloud com permissão Inventory: Read.");
+    console.error("ERRO: abra src/index.js e substitua COLE_SUA_CHAVE_AQUI pela sua chave Roblox Open Cloud.");
+    console.error("Nunca publique sua chave nem faça commit dela no GitHub.");
     process.exitCode = 1;
     return;
   }
 
-  const input = process.argv[2] ?? DEFAULT_USERNAME;
-  usage();
-
-  let user;
-  if (input === DEFAULT_USERNAME) {
-    // O ID informado previamente evita depender da resolução do nome.
-    user = { userId: DEFAULT_USER_ID, username: DEFAULT_USERNAME, displayName: null };
-  } else {
-    user = await resolveUser(input);
-  }
-
-  console.log(`\nConsultando usuário ID ${user.userId}${user.username ? ` (@${user.username})` : ""}...`);
-
-  let rawItems;
+  const rl = readline.createInterface({ input, output });
   try {
-    rawItems = await fetchAllBadges(user.userId);
-  } catch (error) {
-    if (error.status === 403) {
-      console.error("\nACESSO NEGADO (403): a API não permitiu ler este inventário.");
-      console.error("Verifique se a chave tem Inventory: Read e se o inventário é acessível.");
-      console.error("O script não tenta contornar privacidade nem usa cookies de sessão.");
-      process.exitCode = 2;
+    console.log("\n============================================");
+    console.log("   ROBLOX BADGE HISTORY — HISTÓRICO DE EMBLEMAS");
+    console.log("============================================");
+    console.log("Você pode informar o nome de usuário ou o ID numérico da conta.");
+    const accountInput = await ask(rl, "Nome de usuário ou ID Roblox: ");
+    if (!accountInput) {
+      console.error("Você precisa informar um nome de usuário ou ID.");
+      process.exitCode = 1;
       return;
     }
-    if (error.status === 401) {
-      console.error("\nCHAVE INVÁLIDA OU NÃO AUTORIZADA (401). Confira sua ROBLOX_API_KEY.");
-      process.exitCode = 2;
-      return;
+
+    const user = await resolveUser(accountInput);
+    console.log(`\nConta: ${user.displayName ? `${user.displayName} (@${user.username})` : `@${user.username}`}`);
+    console.log(`ID: ${user.userId}`);
+    console.log(`Perfil: https://www.roblox.com/users/${user.userId}/profile`);
+    console.log(`Data de criação: ${user.createdAt ? new Date(user.createdAt).toLocaleString("pt-BR", { timeZone: "UTC", dateStyle: "long", timeStyle: "short" }) + " (UTC)" : "indisponível"}`);
+
+    let rawItems;
+    try {
+      console.log("\nConsultando inventário de emblemas...");
+      rawItems = await fetchAllBadges(user.userId);
+    } catch (error) {
+      if (error.status === 403) {
+        console.error("\nACESSO NEGADO (403): a API não permitiu ler este inventário.");
+        console.error("Confira a permissão Inventory: Read e a acessibilidade do inventário.");
+        console.error("O script não tenta contornar bloqueios de privacidade.");
+        process.exitCode = 2;
+        return;
+      }
+      if (error.status === 401) {
+        console.error("\nCHAVE INVÁLIDA OU NÃO AUTORIZADA (401). Confira a chave em src/index.js.");
+        process.exitCode = 2;
+        return;
+      }
+      throw error;
     }
-    throw error;
-  }
 
-  const badges = rawItems
-    .map(parseBadge)
-    .sort((a, b) => {
-      if (a.awardedAt && b.awardedAt) return b.awardedAt.localeCompare(a.awardedAt);
-      if (a.awardedAt) return -1;
-      if (b.awardedAt) return 1;
-      return (a.badgeId ?? "").localeCompare(b.badgeId ?? "", undefined, { numeric: true });
-    });
-
-  const outDir = path.resolve("output");
-  await fs.mkdir(outDir, { recursive: true });
-
-  const safeName = (user.username ?? `user-${user.userId}`).replace(/[^a-zA-Z0-9_-]/g, "_");
-  const jsonPath = path.join(outDir, `${safeName}-badges.json`);
-  const csvPath = path.join(outDir, `${safeName}-badges.csv`);
-
-  const report = {
-    generatedAt: new Date().toISOString(),
-    user: {
-      userId: user.userId,
-      username: user.username,
-      displayName: user.displayName,
-      profileUrl: `https://www.roblox.com/users/${user.userId}/profile`,
-    },
-    source: "Roblox Open Cloud Inventory API",
-    totalBadgesReturned: badges.length,
-    badgesWithConfirmedAwardDate: badges.filter((b) => b.dateStatus === "confirmed").length,
-    badgesWithoutAccessibleAwardDate: badges.filter((b) => b.dateStatus !== "confirmed").length,
-    note: "A data é a addTime retornada pela API, que representa quando o emblema foi adicionado ao inventário/concedido. Datas indisponíveis não foram inferidas.",
-    badges,
-  };
-
-  await fs.writeFile(jsonPath, JSON.stringify(report, null, 2), "utf8");
-  await fs.writeFile(csvPath, toCsv(badges), "utf8");
-
-  const recentAfter2021 = badges.filter((b) => b.awardedAt && new Date(b.awardedAt) >= new Date("2022-01-01T00:00:00.000Z"));
-
-  console.log("\n========== RESULTADO ==========");
-  console.log(`Perfil: ${report.user.profileUrl}`);
-  console.log(`Emblemas retornados: ${report.totalBadgesReturned}`);
-  console.log(`Com data de concessão acessível: ${report.badgesWithConfirmedAwardDate}`);
-  console.log(`Sem data acessível: ${report.badgesWithoutAccessibleAwardDate}`);
-  console.log(`Com data a partir de 01/01/2022 (UTC): ${recentAfter2021.length}`);
-
-  if (recentAfter2021.length) {
-    console.log("\nEmblemas a partir de 2022 (mais recente primeiro):");
-    for (const b of recentAfter2021) {
-      console.log(`- ${b.awardedAt} | ${b.name ?? "(nome indisponível)"} | ID ${b.badgeId ?? "(ID indisponível)"}`);
-      if (b.badgeUrl) console.log(`  ${b.badgeUrl}`);
+    const badges = rawItems.map(parseBadge).sort((a, b) => compareBadges(a, b, "desc"));
+    const byYear = new Map();
+    for (const badge of badges) {
+      if (badge.year !== null) byYear.set(badge.year, (byYear.get(badge.year) ?? 0) + 1);
     }
-  } else {
-    console.log("\nNenhum emblema com data acessível a partir de 2022 foi retornado.");
-    console.log("Isso não prova que a conta não teve atividade; pode haver limitações de acesso ou dados.");
-  }
 
-  console.log(`\nArquivos gerados:\n- ${jsonPath}\n- ${csvPath}`);
-  console.log("Observação: datas em UTC; confirme o contexto antes de tirar conclusões sobre atividade da conta.");
+    console.log("\n=============== RESUMO ===============");
+    console.log(`Emblemas retornados pela API: ${badges.length}`);
+    console.log(`Emblemas com data acessível: ${badges.filter((badge) => badge.year !== null).length}`);
+    console.log(`Emblemas sem data acessível: ${badges.filter((badge) => badge.year === null).length}`);
+    console.log("\nQuantidade de emblemas por ano (somente datas confirmadas):");
+    if (byYear.size === 0) console.log("Não há datas de concessão acessíveis para agrupar por ano.");
+    else {
+      for (const year of [...byYear.keys()].sort((a, b) => a - b)) {
+        console.log(`Emblemas em ${year}: ${byYear.get(year)}`);
+      }
+    }
+
+    const outDir = path.resolve("output");
+    await fs.mkdir(outDir, { recursive: true });
+    const safeName = (user.username ?? `user-${user.userId}`).replace(/[^a-zA-Z0-9_-]/g, "_");
+    const report = {
+      generatedAt: new Date().toISOString(),
+      user: {
+        userId: user.userId,
+        username: user.username,
+        displayName: user.displayName,
+        createdAt: user.createdAt,
+        profileUrl: `https://www.roblox.com/users/${user.userId}/profile`,
+      },
+      source: "Roblox Open Cloud Inventory API + Roblox Users API",
+      totalBadgesReturned: badges.length,
+      badgesWithConfirmedAwardDate: badges.filter((badge) => badge.dateStatus === "confirmed").length,
+      badgesWithoutAccessibleAwardDate: badges.filter((badge) => badge.dateStatus !== "confirmed").length,
+      countByYear: Object.fromEntries([...byYear.entries()].sort((a, b) => a[0] - b[0])),
+      note: "Somente datas retornadas e interpretadas pela API são usadas para agrupar por ano. Datas indisponíveis não são inferidas.",
+      badges,
+    };
+    await fs.writeFile(path.join(outDir, `${safeName}-badges.json`), JSON.stringify(report, null, 2), "utf8");
+    await fs.writeFile(path.join(outDir, `${safeName}-badges.csv`), toCsv(badges), "utf8");
+    console.log(`\nRelatórios salvos em output/${safeName}-badges.json e output/${safeName}-badges.csv`);
+    console.log("As contagens por ano incluem apenas emblemas com data acessível. Dados indisponíveis não significam ausência de atividade.");
+
+    await browseBadges(rl, badges);
+  } finally {
+    rl.close();
+  }
 }
 
 main().catch((error) => {
