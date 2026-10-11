@@ -1,0 +1,13 @@
+{
+  "name": "roblox-badge-history",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Consulta e ordena o histórico de emblemas de uma conta Roblox usando a Open Cloud Inventory API.",
+  "type": "module",
+  "scripts": {
+    "start": "node --env-file=.env src/index.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
