@@ -4,8 +4,7 @@ import process from "node:process";
 import readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 
-// Cole sua chave Roblox Open Cloud aqui. NÃO publique nem envie sua chave ao GitHub.
-const API_KEY = "COLE_SUA_CHAVE_AQUI";
+const API_KEY = process.env.ROBLOX_API_KEY?.trim();
 const BASE_URL = "https://apis.roblox.com/cloud/v2";
 const USERS_API = "https://users.roblox.com/v1";
 
@@ -42,7 +41,7 @@ async function fetchJson(url, options = {}) {
 async function resolveUser(value) {
   let userId = value;
 
-  if (!/^\d+$/.test(value)) {
+  if (!/^\\d+$/.test(value)) {
     const result = await fetchJson(`${USERS_API}/usernames/users`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -135,7 +134,7 @@ function toCsv(badges) {
     ...badges.map((badge) => [
       badge.badgeId, badge.name, badge.awardedAt, badge.dateStatus, badge.badgeUrl,
     ].map(csvEscape).join(",")),
-  ].join("\r\n");
+  ].join("\\r\\n");
 }
 
 function printBadge(badge, index) {
@@ -146,7 +145,7 @@ function printBadge(badge, index) {
 
 async function browseBadges(rl, badges) {
   while (true) {
-    console.log("\n========== CONSULTA DE EMBLEMAS ==========");
+    console.log("\\n========== CONSULTA DE EMBLEMAS ==========");
     console.log("1. Ver todos por ordem cronológica (mais recentes primeiro)");
     console.log("2. Ver emblemas de um ano específico");
     console.log("3. Listar do mais recente ao mais antigo");
@@ -160,11 +159,11 @@ async function browseBadges(rl, badges) {
       const direction = choice === "4" ? "asc" : "desc";
       const sorted = [...badges].sort((a, b) => compareBadges(a, b, direction));
       const label = direction === "asc" ? "do mais antigo para o mais recente" : "do mais recente para o mais antigo";
-      console.log(`\nTodos os emblemas (${sorted.length}), ${label}:`);
+      console.log(`\\nTodos os emblemas (${sorted.length}), ${label}:`);
       sorted.forEach(printBadge);
     } else if (choice === "2") {
       const yearInput = await ask(rl, "Digite o ano (ex.: 2021): ");
-      if (!/^\d{4}$/.test(yearInput)) {
+      if (!/^\\d{4}$/.test(yearInput)) {
         console.log("Ano inválido. Digite um ano com quatro algarismos.");
         continue;
       }
@@ -172,7 +171,7 @@ async function browseBadges(rl, badges) {
       const matches = badges
         .filter((badge) => badge.year === year)
         .sort((a, b) => compareBadges(a, b, "desc"));
-      console.log(`\nEmblemas com data confirmada em ${year}: ${matches.length}`);
+      console.log(`\\nEmblemas com data confirmada em ${year}: ${matches.length}`);
       if (matches.length) matches.forEach(printBadge);
       else console.log("Nenhum emblema com data acessível foi encontrado para esse ano.");
       const undated = badges.filter((badge) => badge.year === null).length;
@@ -184,16 +183,17 @@ async function browseBadges(rl, badges) {
 }
 
 async function main() {
-  if (!API_KEY || API_KEY === "COLE_SUA_CHAVE_AQUI") {
-    console.error("ERRO: abra src/index.js e substitua COLE_SUA_CHAVE_AQUI pela sua chave Roblox Open Cloud.");
-    console.error("Nunca publique sua chave nem faça commit dela no GitHub.");
+  if (!API_KEY) {
+    console.error("ERRO: a variável ROBLOX_API_KEY não foi definida.");
+    console.error("Crie um arquivo .env com base em .env.example e preencha sua chave Roblox Open Cloud.");
+    console.error("A chave é lida em segundo plano e não é exibida pelo programa.");
     process.exitCode = 1;
     return;
   }
 
   const rl = readline.createInterface({ input, output });
   try {
-    console.log("\n============================================");
+    console.log("\\n============================================");
     console.log("   ROBLOX BADGE HISTORY — HISTÓRICO DE EMBLEMAS");
     console.log("============================================");
     console.log("Você pode informar o nome de usuário ou o ID numérico da conta.");
@@ -205,25 +205,25 @@ async function main() {
     }
 
     const user = await resolveUser(accountInput);
-    console.log(`\nConta: ${user.displayName ? `${user.displayName} (@${user.username})` : `@${user.username}`}`);
+    console.log(`\\nConta: ${user.displayName ? `${user.displayName} (@${user.username})` : `@${user.username}`}`);
     console.log(`ID: ${user.userId}`);
     console.log(`Perfil: https://www.roblox.com/users/${user.userId}/profile`);
     console.log(`Data de criação: ${user.createdAt ? new Date(user.createdAt).toLocaleString("pt-BR", { timeZone: "UTC", dateStyle: "long", timeStyle: "short" }) + " (UTC)" : "indisponível"}`);
 
     let rawItems;
     try {
-      console.log("\nConsultando inventário de emblemas...");
+      console.log("\\nConsultando inventário de emblemas...");
       rawItems = await fetchAllBadges(user.userId);
     } catch (error) {
       if (error.status === 403) {
-        console.error("\nACESSO NEGADO (403): a API não permitiu ler este inventário.");
+        console.error("\\nACESSO NEGADO (403): a API não permitiu ler este inventário.");
         console.error("Confira a permissão Inventory: Read e a acessibilidade do inventário.");
         console.error("O script não tenta contornar bloqueios de privacidade.");
         process.exitCode = 2;
         return;
       }
       if (error.status === 401) {
-        console.error("\nCHAVE INVÁLIDA OU NÃO AUTORIZADA (401). Confira a chave em src/index.js.");
+        console.error("\\nCHAVE INVÁLIDA OU NÃO AUTORIZADA (401). Confira ROBLOX_API_KEY no arquivo .env.");
         process.exitCode = 2;
         return;
       }
@@ -236,11 +236,11 @@ async function main() {
       if (badge.year !== null) byYear.set(badge.year, (byYear.get(badge.year) ?? 0) + 1);
     }
 
-    console.log("\n=============== RESUMO ===============");
+    console.log("\\n=============== RESUMO ===============");
     console.log(`Emblemas retornados pela API: ${badges.length}`);
     console.log(`Emblemas com data acessível: ${badges.filter((badge) => badge.year !== null).length}`);
     console.log(`Emblemas sem data acessível: ${badges.filter((badge) => badge.year === null).length}`);
-    console.log("\nQuantidade de emblemas por ano (somente datas confirmadas):");
+    console.log("\\nQuantidade de emblemas por ano (somente datas confirmadas):");
     if (byYear.size === 0) console.log("Não há datas de concessão acessíveis para agrupar por ano.");
     else {
       for (const year of [...byYear.keys()].sort((a, b) => a - b)) {
@@ -270,7 +270,7 @@ async function main() {
     };
     await fs.writeFile(path.join(outDir, `${safeName}-badges.json`), JSON.stringify(report, null, 2), "utf8");
     await fs.writeFile(path.join(outDir, `${safeName}-badges.csv`), toCsv(badges), "utf8");
-    console.log(`\nRelatórios salvos em output/${safeName}-badges.json e output/${safeName}-badges.csv`);
+    console.log(`\\nRelatórios salvos em output/${safeName}-badges.json e output/${safeName}-badges.csv`);
     console.log("As contagens por ano incluem apenas emblemas com data acessível. Dados indisponíveis não significam ausência de atividade.");
 
     await browseBadges(rl, badges);
@@ -280,7 +280,7 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error("\nFalha ao consultar a API:", error.message);
+  console.error("\\nFalha ao consultar a API:", error.message);
   if (error.body) console.error(JSON.stringify(error.body, null, 2));
   process.exitCode = 1;
 });
