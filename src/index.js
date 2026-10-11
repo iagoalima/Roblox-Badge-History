@@ -149,16 +149,18 @@ async function browseBadges(rl, badges) {
     console.log("\n========== CONSULTA DE EMBLEMAS ==========");
     console.log("1. Ver todos por ordem cronológica (mais recentes primeiro)");
     console.log("2. Ver emblemas de um ano específico");
-    console.log("3. Mostrar o emblema mais recente");
-    console.log("4. Mostrar o emblema mais antigo");
+    console.log("3. Listar do mais recente ao mais antigo");
+    console.log("4. Listar do mais antigo ao mais recente");
     console.log("5. Encerrar");
 
     const choice = await ask(rl, "Escolha uma opção: ");
     if (choice === "5") return;
 
-    if (choice === "1") {
-      const sorted = [...badges].sort((a, b) => compareBadges(a, b, "desc"));
-      console.log(`\nTodos os emblemas (${sorted.length}), do mais recente para o mais antigo:`);
+    if (choice === "1" || choice === "3" || choice === "4") {
+      const direction = choice === "4" ? "asc" : "desc";
+      const sorted = [...badges].sort((a, b) => compareBadges(a, b, direction));
+      const label = direction === "asc" ? "do mais antigo para o mais recente" : "do mais recente para o mais antigo";
+      console.log(`\nTodos os emblemas (${sorted.length}), ${label}:`);
       sorted.forEach(printBadge);
     } else if (choice === "2") {
       const yearInput = await ask(rl, "Digite o ano (ex.: 2021): ");
@@ -175,14 +177,6 @@ async function browseBadges(rl, badges) {
       else console.log("Nenhum emblema com data acessível foi encontrado para esse ano.");
       const undated = badges.filter((badge) => badge.year === null).length;
       if (undated) console.log(`Observação: ${undated} emblema(s) sem data acessível não podem ser atribuídos a um ano.`);
-    } else if (choice === "3" || choice === "4") {
-      const dated = badges.filter((badge) => badge.awardedAt).sort((a, b) => compareBadges(a, b, "desc"));
-      const badge = choice === "3" ? dated[0] : dated.at(-1);
-      if (!badge) console.log("Não há emblemas com data de concessão acessível para determinar essa informação.");
-      else {
-        console.log(choice === "3" ? "\nEmblema mais recente com data confirmada:" : "\nEmblema mais antigo com data confirmada:");
-        printBadge(badge, 0);
-      }
     } else {
       console.log("Opção inválida. Escolha de 1 a 5.");
     }
