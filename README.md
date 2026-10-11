@@ -17,10 +17,11 @@ Ferramenta de linha de comando feita em Node.js para consultar o histórico de e
 - Abre um menu interativo para listar todos os emblemas do mais recente para o mais antigo, do mais antigo para o mais recente ou filtrar um ano específico.
 - Diferencia datas confirmadas de datas indisponíveis; não inventa datas para registros incompletos.
 - Salva relatórios em JSON e CSV na pasta `output/`.
+- Lê a chave da API da variável de ambiente `ROBLOX_API_KEY`; a chave não fica escrita no código-fonte.
 
 ## Requisitos
 
-- Node.js 20 ou superior.
+- Node.js 20.6 ou superior.
 - Uma chave da Roblox Open Cloud com permissão **Inventory: Read**.
 - Acesso ao terminal e à internet.
 
@@ -33,15 +34,25 @@ Ferramenta de linha de comando feita em Node.js para consultar o histórico de e
 
 **Segurança:** não compartilhe sua chave e nunca a publique no GitHub. Se uma chave real for enviada ao repositório por engano, revogue-a e crie outra.
 
-## 2. Configurar a chave no código
+## 2. Configurar o arquivo .env
 
-Abra o arquivo `src/index.js` e localize esta linha no início do arquivo:
+Na pasta principal do projeto, copie o arquivo de exemplo `.env.example` e crie um arquivo chamado `.env`.
 
-```js
-const API_KEY = "COLE_SUA_CHAVE_AQUI";
+No Windows PowerShell, você pode executar:
+
+```powershell
+Copy-Item .env.example .env
 ```
 
-Substitua `COLE_SUA_CHAVE_AQUI` pela sua chave Roblox Open Cloud. Mantenha as aspas. **Não faça commit nem envie o arquivo com sua chave real para um repositório público.** Para uso pessoal, uma alternativa mais segura é carregar a chave de uma variável de ambiente, em vez de gravá-la no código.
+Abra o arquivo `.env` e substitua o valor de exemplo pela sua chave:
+
+```dotenv
+ROBLOX_API_KEY=cole_sua_chave_real_aqui
+```
+
+Não coloque aspas em volta do valor, a menos que sua chave realmente exija isso. O programa lê essa variável automaticamente ao iniciar e não exibe a chave na tela.
+
+**Importante:** o arquivo `.env` está listado no `.gitignore`, então ele não deve ser enviado ao GitHub. Publique somente o `.env.example`, que contém um valor fictício. Nunca cole sua chave real em `.env.example`, no código ou em mensagens públicas.
 
 ## 3. Instalar e executar
 
@@ -50,6 +61,11 @@ Clone ou baixe este repositório e, no terminal, entre na pasta do projeto:
 ```bash
 git clone https://github.com/iagoalima/Roblox-Badge-History.git
 cd Roblox-Badge-History
+```
+
+Crie e preencha o arquivo `.env` conforme as instruções acima. Depois execute:
+
+```bash
 npm start
 ```
 
