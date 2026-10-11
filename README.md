@@ -1,80 +1,104 @@
-# Verificador de histórico de emblemas Roblox
+# Roblox Badge History
 
-Script de linha de comando em Node.js que consulta o inventário de emblemas via Roblox Open Cloud, percorre todas as páginas retornadas e exporta os resultados ordenados por data de concessão, do mais recente para o mais antigo.
+Ferramenta de linha de comando feita em Node.js para consultar o histórico de emblemas de **qualquer conta Roblox** acessível pela Roblox Open Cloud. O programa pergunta no terminal qual conta deve ser consultada, mostra a data de criação do perfil, contabiliza os emblemas por ano e permite navegar pelos registros em ordem cronológica.
 
-Conta inicial configurada: `impactoreal_lindo` — ID `1224165215`.
+## Funcionalidades
+
+- Aceita **nome de usuário** ou **ID numérico** informado durante a execução.
+- Mostra o nome, o ID, o link do perfil e a **data de criação da conta**.
+- Consulta todas as páginas de emblemas retornadas pela API.
+- Exibe a quantidade total de emblemas e quantos têm data de concessão acessível.
+- Agrupa os emblemas por ano, por exemplo:
+  ```text
+  Emblemas em 2020: 10
+  Emblemas em 2021: 18
+  Emblemas em 2022: 7
+  ```
+- Abre um menu interativo para listar todos os emblemas do mais recente para o mais antigo, do mais antigo para o mais recente ou filtrar um ano específico.
+- Diferencia datas confirmadas de datas indisponíveis; não inventa datas para registros incompletos.
+- Salva relatórios em JSON e CSV na pasta `output/`.
 
 ## Requisitos
 
-- Node.js 20 ou superior (Node.js 24 também funciona).
-- Uma chave Roblox Open Cloud com permissão de leitura de inventário.
+- Node.js 20 ou superior.
+- Uma chave da Roblox Open Cloud com permissão **Inventory: Read**.
+- Acesso ao terminal e à internet.
 
-## 1. Criar a chave de API
+## 1. Criar uma chave da API
 
-1. Acesse https://create.roblox.com/dashboard/credentials
+1. Acesse o [painel de credenciais Roblox](https://create.roblox.com/dashboard/credentials).
 2. Crie uma API key.
-3. Nas permissões, adicione **Inventory** com acesso **Read**.
+3. Configure a permissão **Inventory** com acesso **Read**.
 4. Restrinja a chave conforme as opções disponíveis e mantenha-a privada.
-5. Não envie a chave para ninguém e não a publique no GitHub.
 
-## 2. Configurar a chave
+**Segurança:** não compartilhe sua chave e nunca a publique no GitHub. Se uma chave real for enviada ao repositório por engano, revogue-a e crie outra.
 
-Copie `.env.example` para `.env` e preencha `ROBLOX_API_KEY`. O script não carrega arquivos `.env` automaticamente; para evitar dependências, passe a variável ao executar.
+## 2. Configurar a chave no código
 
-### Windows PowerShell
+Abra o arquivo `src/index.js` e localize esta linha no início do arquivo:
 
-```powershell
-$env:ROBLOX_API_KEY="SUA_CHAVE_AQUI"
+```js
+const API_KEY = "COLE_SUA_CHAVE_AQUI";
+```
+
+Substitua `COLE_SUA_CHAVE_AQUI` pela sua chave Roblox Open Cloud. Mantenha as aspas. **Não faça commit nem envie o arquivo com sua chave real para um repositório público.** Para uso pessoal, uma alternativa mais segura é carregar a chave de uma variável de ambiente, em vez de gravá-la no código.
+
+## 3. Instalar e executar
+
+Clone ou baixe este repositório e, no terminal, entre na pasta do projeto:
+
+```bash
+git clone https://github.com/iagoalima/Roblox-Badge-History.git
+cd Roblox-Badge-History
 npm start
 ```
 
-### Windows CMD
+O programa solicitará o nome de usuário ou o ID da conta Roblox:
 
-```cmd
-set ROBLOX_API_KEY=SUA_CHAVE_AQUI
-npm start
+```text
+Nome de usuário ou ID Roblox: impactoreal_lindo
 ```
 
-### Linux / macOS
+Você pode digitar, por exemplo, `impactoreal_lindo` ou `1224165215`. Não é necessário editar o código para escolher a conta: a informação é preenchida diretamente no terminal.
 
-```bash
-export ROBLOX_API_KEY="SUA_CHAVE_AQUI"
-npm start
+## 4. Resumo e menu interativo
+
+Depois da consulta, o programa mostra a data de criação da conta e o resumo do histórico, incluindo a quantidade total de emblemas, quantos têm data acessível e a quantidade por ano.
+
+Em seguida, aparece um menu semelhante a este:
+
+```text
+========== CONSULTA DE EMBLEMAS ==========
+1. Ver todos por ordem cronológica (mais recentes primeiro)
+2. Ver emblemas de um ano específico
+3. Listar do mais recente ao mais antigo
+4. Listar do mais antigo ao mais recente
+5. Encerrar
 ```
 
-## 3. Executar
+Escolha uma opção digitando o número correspondente. Ao selecionar um ano, são exibidos apenas os emblemas cuja data de concessão pôde ser confirmada naquele ano.
 
-A conta configurada por padrão:
+## 5. Relatórios exportados
 
-```bash
-npm start
-```
+O programa cria a pasta `output/` e salva:
 
-Outro nome de usuário:
+- `NOME-badges.json`: relatório detalhado, com informações da conta, totais, contagens anuais e emblemas.
+- `NOME-badges.csv`: tabela que pode ser aberta no Excel ou no Google Sheets.
 
-```bash
-npm start -- nomeDoJogador
-```
+Os registros incluem o nome e ID do emblema, URL, data de concessão quando disponível e o estado da data.
 
-Outro ID numérico:
+## Limitações e interpretação dos dados
 
-```bash
-npm start -- 123456789
-```
+- A Roblox Open Cloud respeita as permissões e as restrições de privacidade da plataforma. Se a API retornar `403`, o programa informa o bloqueio e **não tenta contorná-lo**.
+- A contagem por ano inclui apenas emblemas cuja data de concessão foi retornada e pôde ser interpretada. Os registros sem data ficam contabilizados separadamente e não são atribuídos a um ano.
+- A data de criação da conta vem da API de usuários do Roblox; a data de concessão do emblema vem dos dados de inventário retornados pela Open Cloud.
+- A quantidade exibida é a quantidade de registros retornados pela API, não uma garantia de que a API exponha todos os emblemas de qualquer perfil.
+- Datas são exibidas/agrupadas em UTC. Uma data indisponível **não significa** que não houve atividade.
+- O relatório é um resumo técnico dos dados disponibilizados pelas APIs; isoladamente, não comprova quem utilizou uma conta ou por quanto tempo.
 
-## 4. Arquivos gerados
+## Tecnologias
 
-O script cria a pasta `output/` com:
-
-- `*-badges.json`: relatório detalhado.
-- `*-badges.csv`: planilha que pode ser aberta no Excel ou Google Sheets.
-
-As datas são normalizadas em UTC. O script conta separadamente emblemas com data confirmada e emblemas sem data acessível.
-
-## Limitações importantes
-
-- A API Open Cloud respeita as permissões e a privacidade do Roblox. Se a consulta retornar `403`, o script não tenta contornar o bloqueio.
-- O endpoint pode retornar apenas os emblemas que a API disponibiliza para aquele inventário.
-- A data usada é `addTime`, campo que a API de inventário documenta como o momento em que o item foi adicionado ao inventário; para emblemas, isso corresponde ao momento em que foram concedidos.
-- Se a API não retornar uma data, o script marca como `unavailable`; não usa a data de criação do emblema como substituta.
-- O resultado é evidência técnica de registros retornados pela API, não uma conclusão automática sobre quem usou a conta ou por quanto tempo.
+- Node.js (ES Modules)
+- Roblox Users API
+- Roblox Open Cloud Inventory API
+- `fetch` nativo do Node.js — sem dependências externas
