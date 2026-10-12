@@ -7,6 +7,7 @@ import { stdin as input, stdout as output } from "node:process";
 const API_KEY = process.env.ROBLOX_API_KEY?.trim();
 const BASE_URL = "https://apis.roblox.com/cloud/v2";
 const USERS_API = "https://users.roblox.com/v1";
+const BADGES_API = "https://badges.roblox.com";
 
 async function ask(rl, question) {
   return (await rl.question(question)).trim();
@@ -143,17 +144,65 @@ function printBadge(badge, index) {
   if (badge.badgeUrl) console.log(`   ${badge.badgeUrl}`);
 }
 
-async function browseBadges(rl, badges) {
+async function lookupBadgeById(rl, user, ownedBadges) {
+  const badgeId = await ask(rl, "\nDigite o ID numérico do emblema: ");
+  if (!/^\\d+$/.test(badgeId)) {
+    console.log("ID inválido. Informe apenas números.");
+    return;
+  }
+
+  const badgeUrl = `https://www.roblox.com/badges/${badgeId}`;
+  const ownedBadge = ownedBadges.find((badge) => badge.badgeId === badgeId);
+  let details = null;
+
+  try {
+    details = await fetchJson(`${BADGES_API}/v1/badges/${badgeId}`);
+  } catch (error) {
+    if (error.status === 404) {
+      console.log("\\nA API não encontrou informações públicas para esse ID.");
+    } else {
+      console.log("\\nNão foi possível obter os detalhes gerais do emblema pela API.");
+      console.log(`Motivo informado pela API: HTTP ${error.status ?? "desconhecido"}.`);
+    }
+  }
+
+  console.log("\\n========== EMBLEMA CONSULTADO ==========");
+  console.log(`ID: ${badgeId}`);
+  console.log(`Nome: ${details?.name ?? ownedBadge?.name ?? "indisponível"}`);
+  console.log(`Descrição: ${details?.description ?? ownedBadge?.description ?? "indisponível"}`);
+  console.log(`Link: ${badgeUrl}`);
+
+  if (details?.enabled !== undefined) {
+    console.log(`Disponível para concessão: ${details.enabled ? "sim" : "não"}`);
+  }
+
+  if (ownedBadge) {
+    console.log(`Conta consultada: @${user.username ?? user.userId} (ID ${user.userId})`);
+    console.log("Presença no inventário retornado: encontrada");
+    console.log(`Data de obtenção: ${ownedBadge.awardedAt ?? "indisponível nos dados retornados pela API"}`);
+  } else {
+    console.log(`Conta consultada: @${user.username ?? user.userId} (ID ${user.userId})`);
+    console.log("O emblema não apareceu no inventário retornado para esta conta.");
+    console.log("Isso não permite concluir, por si só, que a conta nunca o obteve; a API pode não disponibilizar esse registro.");
+  }
+}
+
+async function browseBadges(rl, badges, user) {
   while (true) {
     console.log("\n========== CONSULTA DE EMBLEMAS ==========");
     console.log("1. Ver todos por ordem cronológica (mais recentes primeiro)");
     console.log("2. Ver emblemas de um ano específico");
     console.log("3. Listar do mais recente ao mais antigo");
     console.log("4. Listar do mais antigo ao mais recente");
-    console.log("5. Encerrar");
+    console.log("5. Buscar um emblema específico pelo ID");
+    console.log("6. Encerrar");
 
     const choice = await ask(rl, "Escolha uma opção: ");
-    if (choice === "5") return;
+    if (choice === "6") return;
+    if (choice === "5") {
+      await lookupBadgeById(rl, user, badges);
+      continue;
+    }
 
     if (choice === "1" || choice === "3" || choice === "4") {
       const direction = choice === "4" ? "asc" : "desc";
@@ -177,7 +226,7 @@ async function browseBadges(rl, badges) {
       const undated = badges.filter((badge) => badge.year === null).length;
       if (undated) console.log(`Observação: ${undated} emblema(s) sem data acessível não podem ser atribuídos a um ano.`);
     } else {
-      console.log("Opção inválida. Escolha de 1 a 5.");
+      console.log("Opção inválida. Escolha de 1 a 6.");
     }
   }
 }
@@ -273,7 +322,7 @@ async function main() {
     console.log(`\nRelatórios salvos em output/${safeName}-badges.json e output/${safeName}-badges.csv`);
     console.log("As contagens por ano incluem apenas emblemas com data acessível. Dados indisponíveis não significam ausência de atividade.");
 
-    await browseBadges(rl, badges);
+    await browseBadges(rl, badges, user);
   } finally {
     rl.close();
   }
