@@ -159,14 +159,14 @@ async function lookupBadgeById(rl, user, ownedBadges) {
     details = await fetchJson(`${BADGES_API}/v1/badges/${badgeId}`);
   } catch (error) {
     if (error.status === 404) {
-      console.log("\\nA API não encontrou informações públicas para esse ID.");
+      console.log("\nA API não encontrou informações públicas para esse ID.");
     } else {
-      console.log("\\nNão foi possível obter os detalhes gerais do emblema pela API.");
+      console.log("\nNão foi possível obter os detalhes gerais do emblema pela API.");
       console.log(`Motivo informado pela API: HTTP ${error.status ?? "desconhecido"}.`);
     }
   }
 
-  console.log("\\n========== EMBLEMA CONSULTADO ==========");
+  console.log("\n========== EMBLEMA CONSULTADO ==========");
   console.log(`ID: ${badgeId}`);
   console.log(`Nome: ${details?.name ?? ownedBadge?.name ?? "indisponível"}`);
   console.log(`Descrição: ${details?.description ?? ownedBadge?.description ?? "indisponível"}`);
