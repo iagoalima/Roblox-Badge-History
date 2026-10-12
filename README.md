@@ -89,7 +89,8 @@ Em seguida, aparece um menu semelhante a este:
 2. Ver emblemas de um ano específico
 3. Listar do mais recente ao mais antigo
 4. Listar do mais antigo ao mais recente
-5. Encerrar
+5. Buscar um emblema específico pelo ID
+6. Encerrar
 ```
 
 Escolha uma opção digitando o número correspondente. A opção 5 permite informar o ID numérico de um emblema para consultar os dados públicos disponíveis, abrir seu link e verificar se ele aparece no inventário da conta consultada. Ao selecionar um ano, são exibidos apenas os emblemas cuja data de concessão pôde ser confirmada naquele ano.
