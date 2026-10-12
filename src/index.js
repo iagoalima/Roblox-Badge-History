@@ -169,6 +169,7 @@ async function lookupBadgeById(rl, user, ownedBadges) {
   console.log("\n========== EMBLEMA CONSULTADO ==========");
   console.log(`ID: ${badgeId}`);
   console.log(`Nome: ${details?.name ?? ownedBadge?.name ?? "indisponível"}`);
+  console.log(`De: ${details?.creator?.name ?? (details?.creator?.id ? `ID ${details.creator.id}` : "indisponível pela API")}`);
   console.log(`Descrição: ${details?.description ?? ownedBadge?.description ?? "indisponível"}`);
   console.log(`Link: ${badgeUrl}`);
 
