@@ -15,7 +15,8 @@ Ferramenta de linha de comando feita em Node.js para consultar o histórico de e
   Emblemas em 2022: 7
   ```
 - Abre um menu interativo para listar todos os emblemas do mais recente para o mais antigo, do mais antigo para o mais recente ou filtrar um ano específico.
-- Diferencia datas confirmadas de datas indisponíveis; não inventa datas para registros incompletos.\n- Permite buscar um emblema específico pelo ID, mostrando nome, descrição, link direto e, se o emblema aparecer nos registros retornados para a conta consultada, a data de obtenção disponível.
+- Diferencia datas confirmadas de datas indisponíveis; não inventa datas para registros incompletos.
+- Permite buscar um emblema específico pelo ID, mostrando nome, criador (campo **De:**), descrição, link direto e, se o emblema aparecer nos registros retornados para a conta consultada, a data de obtenção disponível.
 - Salva relatórios em JSON e CSV na pasta `output/`.
 - Lê a chave da API da variável de ambiente `ROBLOX_API_KEY`; a chave não fica escrita no código-fonte.
 
@@ -93,7 +94,7 @@ Em seguida, aparece um menu semelhante a este:
 6. Encerrar
 ```
 
-Escolha uma opção digitando o número correspondente. A opção 5 permite informar o ID numérico de um emblema para consultar os dados públicos disponíveis, abrir seu link e verificar se ele aparece no inventário da conta consultada. Ao selecionar um ano, são exibidos apenas os emblemas cuja data de concessão pôde ser confirmada naquele ano.
+Escolha uma opção digitando o número correspondente. A opção 5 permite informar o ID numérico de um emblema para consultar os dados públicos disponíveis, incluindo nome, criador (campo **De:**), descrição e link, além de verificar se ele aparece no inventário da conta consultada. Ao selecionar um ano, são exibidos apenas os emblemas cuja data de concessão pôde ser confirmada naquele ano.
 
 ## 5. Relatórios exportados
 
