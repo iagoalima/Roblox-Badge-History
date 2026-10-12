@@ -15,7 +15,7 @@ Ferramenta de linha de comando feita em Node.js para consultar o histórico de e
   Emblemas em 2022: 7
   ```
 - Abre um menu interativo para listar todos os emblemas do mais recente para o mais antigo, do mais antigo para o mais recente ou filtrar um ano específico.
-- Diferencia datas confirmadas de datas indisponíveis; não inventa datas para registros incompletos.
+- Diferencia datas confirmadas de datas indisponíveis; não inventa datas para registros incompletos.\n- Permite buscar um emblema específico pelo ID, mostrando nome, descrição, link direto e, se o emblema aparecer nos registros retornados para a conta consultada, a data de obtenção disponível.
 - Salva relatórios em JSON e CSV na pasta `output/`.
 - Lê a chave da API da variável de ambiente `ROBLOX_API_KEY`; a chave não fica escrita no código-fonte.
 
@@ -92,7 +92,7 @@ Em seguida, aparece um menu semelhante a este:
 5. Encerrar
 ```
 
-Escolha uma opção digitando o número correspondente. Ao selecionar um ano, são exibidos apenas os emblemas cuja data de concessão pôde ser confirmada naquele ano.
+Escolha uma opção digitando o número correspondente. A opção 5 permite informar o ID numérico de um emblema para consultar os dados públicos disponíveis, abrir seu link e verificar se ele aparece no inventário da conta consultada. Ao selecionar um ano, são exibidos apenas os emblemas cuja data de concessão pôde ser confirmada naquele ano.
 
 ## 5. Relatórios exportados
 
@@ -107,7 +107,7 @@ Os registros incluem o nome e ID do emblema, URL, data de concessão quando disp
 
 - A Roblox Open Cloud respeita as permissões e as restrições de privacidade da plataforma. Se a API retornar `403`, o programa informa o bloqueio e **não tenta contorná-lo**.
 - A contagem por ano inclui apenas emblemas cuja data de concessão foi retornada e pôde ser interpretada. Os registros sem data ficam contabilizados separadamente e não são atribuídos a um ano.
-- A data de criação da conta vem da API de usuários do Roblox; a data de concessão do emblema vem dos dados de inventário retornados pela Open Cloud.
+- A data de criação da conta vem da API de usuários do Roblox; a data de concessão do emblema vem dos dados de inventário retornados pela Open Cloud. A consulta individual usa a API pública de detalhes de emblemas para obter nome e descrição; a data de obtenção só pode ser mostrada se estiver disponível nos registros do inventário da conta.
 - A quantidade exibida é a quantidade de registros retornados pela API, não uma garantia de que a API exponha todos os emblemas de qualquer perfil.
 - Datas são exibidas/agrupadas em UTC. Uma data indisponível **não significa** que não houve atividade.
 - O relatório é um resumo técnico dos dados disponibilizados pelas APIs; isoladamente, não comprova quem utilizou uma conta ou por quanto tempo.
