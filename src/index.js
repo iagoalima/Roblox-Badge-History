@@ -42,7 +42,7 @@ async function fetchJson(url, options = {}) {
 async function resolveUser(value) {
   let userId = value;
 
-  if (!/^\\d+$/.test(value)) {
+  if (!/^\d+$/.test(value)) {
     const result = await fetchJson(`${USERS_API}/usernames/users`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -146,7 +146,7 @@ function printBadge(badge, index) {
 
 async function lookupBadgeById(rl, user, ownedBadges) {
   const badgeId = await ask(rl, "\nDigite o ID numérico do emblema: ");
-  if (!/^\\d+$/.test(badgeId)) {
+  if (!/^\d+$/.test(badgeId)) {
     console.log("ID inválido. Informe apenas números.");
     return;
   }
@@ -212,7 +212,7 @@ async function browseBadges(rl, badges, user) {
       sorted.forEach(printBadge);
     } else if (choice === "2") {
       const yearInput = await ask(rl, "Digite o ano (ex.: 2021): ");
-      if (!/^\\d{4}$/.test(yearInput)) {
+      if (!/^\d{4}$/.test(yearInput)) {
         console.log("Ano inválido. Digite um ano com quatro algarismos.");
         continue;
       }
